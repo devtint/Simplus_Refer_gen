@@ -7,14 +7,17 @@ Each successful registration counts as a referral to your account, helping you e
 For Educational Purposes Only
 
 BEFORE RUNNING:
-1. Get your Telegram API credentials from https://my.telegram.org
+1. Get your Telegram API credentials from https://my.telegram.org (Still needed for legacy compatibility)
 2. Replace API_ID, API_HASH, and PHONE_NUMBER with your actual values
 3. Change the invitation_code to YOUR referral code (this is how you get referrals)
-4. Install required packages: pip install telethon requests
-5. IMPORTANT: Start @TempMail_org_bot on Telegram first and generate at least one email
-   - Search for @TempMail_org_bot in Telegram
-   - Start the bot with /start command
-   - Generate a test email to ensure it's working
+4. Install required packages: pip install requests python-dotenv
+5. NEW: Now uses mail.tm API for temporary emails - No Telegram bot required!
+
+FEATURES:
+- Direct mail.tm API integration (faster and more reliable)
+- Proxy rotation support for better anonymization
+- User-Agent rotation to avoid detection
+- Automatic failed proxy blacklisting
 
 DISCLAIMER: This script is for educational purposes only.
 Use responsibly and in accordance with platform terms of service.
@@ -27,6 +30,7 @@ from telethon import TelegramClient, events
 import time
 import os
 import random
+import json
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -44,10 +48,8 @@ if not all([API_ID, API_HASH, PHONE_NUMBER]):
 # Load invitation codes (supports multiple codes separated by comma)
 INVITATION_CODES = [code.strip() for code in os.getenv('INVITATION_CODES', '').split(',') if code.strip()]
 
-# Temp mail bot username
-# IMPORTANT: Make sure to start @TempMail_org_bot on Telegram before running this script!
-# Search for it, click Start, and generate at least one test email to ensure it's working.
-TEMP_MAIL_BOT = 'TempMail_org_bot'
+# Mail.tm API configuration
+MAILTM_BASE_URL = 'https://api.mail.tm'
 
 # List of realistic User-Agent strings to rotate and avoid detection
 USER_AGENTS = [
@@ -70,6 +72,11 @@ class SimplusAutoReferBot:
         self.verification_code = None
         self.email_received = asyncio.Event()
         self.code_received = asyncio.Event()
+        
+        # Mail.tm API configuration
+        self.mail_account = None
+        self.mail_token = None
+        self.mail_password = None
         
         # Proxy configuration
         self.use_proxy = use_proxy
@@ -121,46 +128,155 @@ class SimplusAutoReferBot:
             print(f"📊 Failed proxies: {len(self.failed_proxies)}/{len(self.proxy_list)}")
             self._rotate_proxy()
 
-    async def setup_telegram(self):
-        """Setup Telegram client with event handlers"""
-        print("📱 Setting up Telegram client...")
-        print("⚠️  REMINDER: Make sure @TempMail_org_bot is started and working!")
-        
-        self.client = TelegramClient('session', API_ID, API_HASH)
-        
-        @self.client.on(events.NewMessage(from_users=TEMP_MAIL_BOT))
-        async def handler(event):
-            message = event.message.text
-            print(f"\n📨 Bot Message: {message}")
-            
-            # Extract temporary email from message (only when it's actually generated)
-            if any(keyword in message.lower() for keyword in ['temporary email', 'new email', 'generated']):
-                email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', message)
-                if email_match:
-                    self.current_email = email_match.group()
-                    print(f"✅ Email extracted: {self.current_email}")
-                    self.email_received.set()
-            
-            # Extract verification code from OTP messages
-            code_match = re.search(r'(\d{6})\s+is your verification code', message)
-            if code_match:
-                self.verification_code = code_match.group(1)
-                print(f"✅ Verification code extracted: {self.verification_code}")
-                self.code_received.set()
+    def get_mail_domains(self):
+        """Get available domains from mail.tm"""
+        try:
+            response = self.session.get(f"{MAILTM_BASE_URL}/domains", timeout=15)
+            if response.status_code == 200:
+                data = response.json()
+                domains = [domain['domain'] for domain in data['hydra:member'] if domain.get('isActive', True)]
+                return domains
             else:
-                # Alternative pattern for verification codes
-                code_match = re.search(r'\b(\d{6})\b', message)
-                if code_match and 'verification' in message.lower():
-                    self.verification_code = code_match.group(1)
-                    print(f"✅ Verification code extracted: {self.verification_code}")
-                    self.code_received.set()
+                print(f"❌ Failed to get domains: {response.status_code}")
+                return []
+        except Exception as e:
+            print(f"❌ Error getting domains: {e}")
+            if self.use_proxy and self.current_proxy:
+                self._mark_proxy_failed()
+                return self.get_mail_domains()  # Retry with new proxy
+            return []
 
-        # Start the client
-        await self.client.start(PHONE_NUMBER)
-        print("✅ Telegram client started successfully")
+    def create_mail_account(self):
+        """Create a new temporary email account"""
+        try:
+            domains = self.get_mail_domains()
+            if not domains:
+                print("❌ No available domains")
+                return None
+            
+            # Generate random username and use first available domain
+            username = f"user{random.randint(100000, 999999)}"
+            domain = random.choice(domains)
+            email = f"{username}@{domain}"
+            password = f"pass{random.randint(100000, 999999)}"
+            
+            # Create account
+            payload = {
+                "address": email,
+                "password": password
+            }
+            
+            response = self.session.post(f"{MAILTM_BASE_URL}/accounts", json=payload, timeout=15)
+            
+            if response.status_code == 201:
+                account_data = response.json()
+                self.mail_account = account_data
+                self.mail_password = password
+                self.current_email = email
+                
+                # Get authentication token
+                token_response = self.session.post(f"{MAILTM_BASE_URL}/token", json={
+                    "address": email,
+                    "password": password
+                }, timeout=15)
+                
+                if token_response.status_code == 200:
+                    token_data = token_response.json()
+                    self.mail_token = token_data['token']
+                    print(f"✅ Created email account: {email}")
+                    return email
+                else:
+                    print(f"❌ Failed to get token: {token_response.status_code}")
+                    return None
+            else:
+                print(f"❌ Failed to create account: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            print(f"❌ Error creating mail account: {e}")
+            if self.use_proxy and self.current_proxy:
+                self._mark_proxy_failed()
+                return self.create_mail_account()  # Retry with new proxy
+            return None
+
+    def get_verification_code_from_email(self, max_attempts=12, delay=5):
+        """Get verification code from the latest email"""
+        if not self.mail_token:
+            print("❌ No mail token available")
+            return None
+            
+        headers = {"Authorization": f"Bearer {self.mail_token}"}
         
-        # Ensure we're connected to the temp mail bot
-        print("✅ Connected to temp mail bot")
+        for attempt in range(max_attempts):
+            try:
+                print(f"📨 Checking for emails... (Attempt {attempt + 1}/{max_attempts})")
+                
+                # Get messages
+                response = self.session.get(f"{MAILTM_BASE_URL}/messages", headers=headers, timeout=15)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    messages = data.get('hydra:member', [])
+                    
+                    if messages:
+                        # Get the latest message
+                        latest_message = messages[0]
+                        message_id = latest_message['id']
+                        
+                        # Get full message content
+                        msg_response = self.session.get(f"{MAILTM_BASE_URL}/messages/{message_id}", headers=headers, timeout=15)
+                        
+                        if msg_response.status_code == 200:
+                            message_data = msg_response.json()
+                            
+                            # Try to extract verification code from text and html
+                            text_content = message_data.get('text', '')
+                            html_content = ' '.join(message_data.get('html', []))
+                            full_content = text_content + ' ' + html_content
+                            
+                            # Look for 6-digit verification code
+                            code_patterns = [
+                                r'(\d{6})\s+is your verification code',
+                                r'verification code:\s*(\d{6})',
+                                r'code:\s*(\d{6})',
+                                r'OTP:\s*(\d{6})',
+                                r'\b(\d{6})\b'
+                            ]
+                            
+                            for pattern in code_patterns:
+                                match = re.search(pattern, full_content, re.IGNORECASE)
+                                if match:
+                                    code = match.group(1)
+                                    print(f"✅ Verification code found: {code}")
+                                    return code
+                            
+                            print("⚠️ Email received but no verification code found")
+                            print(f"📄 Email content preview: {full_content[:200]}...")
+                    
+                    else:
+                        print("📭 No messages yet, waiting...")
+                
+                elif response.status_code == 401:
+                    print("❌ Authentication failed, token might be expired")
+                    return None
+                else:
+                    print(f"❌ Failed to get messages: {response.status_code}")
+                
+            except Exception as e:
+                print(f"❌ Error checking emails: {e}")
+                if self.use_proxy and self.current_proxy:
+                    self._mark_proxy_failed()
+            
+            if attempt < max_attempts - 1:
+                time.sleep(delay)
+        
+        print("❌ Timeout waiting for verification code")
+        return None
+
+    async def setup_telegram(self):
+        """Setup Telegram client - DEPRECATED: Now using mail.tm API"""
+        print("📱 Telegram setup skipped - Using mail.tm API instead")
+        print("✅ Mail.tm API ready for email generation")
 
     def send_verification_code(self, email):
         """Send verification code to email via Simplus API"""
@@ -213,30 +329,25 @@ class SimplusAutoReferBot:
             return False
 
     async def generate_new_email(self):
-        """Generate a new temporary email"""
-        print("\n🔄 Generating new temporary email...")
-        await self.client.send_message(TEMP_MAIL_BOT, '➕ Generate New / Delete')
-        self.email_received.clear()
-        
-        # Wait for email (max 30 seconds)
-        try:
-            await asyncio.wait_for(self.email_received.wait(), timeout=30.0)
-            return self.current_email
-        except asyncio.TimeoutError:
-            print("❌ Timeout waiting for email generation")
+        """Generate a new temporary email using mail.tm API"""
+        print("\n🔄 Generating new temporary email via mail.tm...")
+        email = self.create_mail_account()
+        if email:
+            print(f"✅ Email generated: {email}")
+            return email
+        else:
+            print("❌ Failed to generate email")
             return None
 
     async def wait_for_verification_code(self):
-        """Wait for verification code from bot"""
-        print("⏳ Waiting for verification code...")
-        self.code_received.clear()
-        
-        # Wait for verification code (max 60 seconds)
-        try:
-            await asyncio.wait_for(self.code_received.wait(), timeout=60.0)
-            return self.verification_code
-        except asyncio.TimeoutError:
-            print("❌ Timeout waiting for verification code")
+        """Wait for verification code from mail.tm"""
+        print("⏳ Waiting for verification code via mail.tm...")
+        code = self.get_verification_code_from_email()
+        if code:
+            print(f"✅ Verification code received: {code}")
+            return code
+        else:
+            print("❌ Failed to get verification code")
             return None
 
     async def run_cycle(self, loop_count, code_index, total_codes, invitation_code):
@@ -295,6 +406,7 @@ class SimplusAutoReferBot:
         """Run continuous referral generation cycles with big cycle management"""
         print("🤖 SIMPLUS FULLY AUTOMATED REFERRAL BOT")
         print("🚀 Starting fully automated referral generation...")
+        print("📧 Using mail.tm API for temporary emails (No Telegram required!)")
         print(f"📋 Big Cycle = 50 loops | {len(INVITATION_CODES)} codes per loop | Approval required after each Big Cycle")
         print(f"📝 Loaded {len(INVITATION_CODES)} invitation codes: {', '.join(INVITATION_CODES)}")
         
@@ -302,11 +414,8 @@ class SimplusAutoReferBot:
             print("❌ ERROR: No invitation codes found in .env file!")
             return
         
-        # Setup Telegram
+        # Setup (no more Telegram needed)
         await self.setup_telegram()
-        
-        # Send thank you message
-        await self.send_thank_you_message()
         
         loop_count = 1
         total_success_count = 0
@@ -343,9 +452,6 @@ class SimplusAutoReferBot:
                     print(f"\n🎉 BIG CYCLE {big_cycle_count} COMPLETED!")
                     print(f"📊 Results: {total_success_count} total successful referrals generated")
                     
-                    # Send completion message to BadCodeWriter
-                    await self.send_completion_message(big_cycle_count, LOOPS_PER_BIG_CYCLE, total_success_count)
-                    
                     # Ask for approval to continue
                     if not self.get_user_approval():
                         print("\n🛑 Bot stopped by user choice")
@@ -367,11 +473,11 @@ class SimplusAutoReferBot:
         except Exception as e:
             print(f"\n❌ Unexpected error: {e}")
         finally:
-            await self.client.disconnect()
-            print("✅ Telegram client disconnected")
+            print("✅ Bot session ended")
 
 async def main():
     print("🚀 Starting Simplus Auto Referral Generator Bot...")
+    print("📧 Now using mail.tm API - No Telegram setup required!")
     print(f"Made with ❤️ by TYRELL (Only for educational purposes, NO illegal use!)")
     automator = SimplusAutoReferBot()
     await automator.run_continuous()

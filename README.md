@@ -75,24 +75,27 @@ cd Simplus_Refer_gen
 pip install -r requirements.txt
 ```
 
-### 2. 🔑 Get Telegram API Credentials
+### 2. 🔑 Get Telegram API Credentials (Optional)
 
-1. Visit [my.telegram.org](https://my.telegram.org)
-2. Log in with your phone number
-3. Go to **"API Development Tools"**
-4. Create a new application
-5. Save your `API_ID` and `API_HASH`
+> 📝 **Note**: Telegram credentials are kept for legacy compatibility but **not required** for the new mail.tm integration.
 
-### 3. 📧 Setup TempMail Bot
+1. Visit [my.telegram.org](https://my.telegram.org) *(Optional)*
+2. Log in with your phone number *(Optional)*
+3. Go to **"API Development Tools"** *(Optional)*
+4. Create a new application *(Optional)*
+5. Save your `API_ID` and `API_HASH` *(Optional)*
 
-**IMPORTANT**: Before running the script, you must activate the TempMail bot:
+### 3. ⚡ Mail.tm Integration
 
-1. **Open Telegram** and search for `@TempMail_org_bot`
-2. **Click "Start"** to activate the bot
-3. **Generate a test email** by clicking "➕ Generate New / Delete"
-4. **Verify it works** - you should receive a temporary email address
+**NEW**: Now uses mail.tm API directly - **No Telegram bot setup required!**
 
-> ⚠️ **Critical**: The script will fail if @TempMail_org_bot is not started and working properly!
+✅ **Benefits of mail.tm integration:**
+- **Faster**: Direct API calls (no waiting for bot responses)
+- **More reliable**: No dependency on Telegram uptime
+- **Easier setup**: No Telegram session or bot activation needed
+- **Better proxy support**: Full HTTP(S) proxy compatibility
+
+> 🎉 **Zero Telegram setup**: The bot now works completely standalone!
 
 ### 4. ⚙️ Configuration
 
