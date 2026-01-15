@@ -33,13 +33,25 @@ def load_config():
             config = json.load(f)
     else:
         # Initialize from env if config doesn't exist
+        proxy_list_str = os.getenv('PROXY_LIST', '')
+        proxy_list = [p.strip() for p in proxy_list_str.split(',') if p.strip()] if proxy_list_str else []
+        
         config = {
             'invitation_codes': [code.strip() for code in os.getenv('INVITATION_CODES', '').split(',') if code.strip()],
             'wait_between_codes': 10,
             'wait_between_loops': 6000,
-            'loops_per_big_cycle': 50
+            'loops_per_big_cycle': 50,
+            'use_proxy': False,
+            'proxy_list': proxy_list
         }
         save_config(config)
+    
+    # Ensure proxy settings exist in config
+    if 'use_proxy' not in config:
+        config['use_proxy'] = False
+    if 'proxy_list' not in config:
+        config['proxy_list'] = []
+    
     return config
 
 def save_config(config):
@@ -134,10 +146,21 @@ async def run_bot():
         bot_state['running'] = False
         return
     
-    bot_instance = SimplusAutoReferBot()
+    # Initialize bot with proxy configuration
+    use_proxy = config.get('use_proxy', False)
+    proxy_list = config.get('proxy_list', [])
+    
+    bot_instance = SimplusAutoReferBot(
+        proxy_list=proxy_list if use_proxy else None,
+        use_proxy=use_proxy
+    )
     
     add_log("Bot initialized successfully", "success")
     add_log(f"Loaded {len(invitation_codes)} invitation codes", "info")
+    if use_proxy and proxy_list:
+        add_log(f"Proxy enabled with {len(proxy_list)} proxies", "success")
+    else:
+        add_log("Proxy disabled", "info")
     
     try:
         # Setup Telegram
@@ -356,6 +379,15 @@ def update_config():
             config['wait_between_loops'] = int(data['wait_between_loops'])
         if 'loops_per_big_cycle' in data:
             config['loops_per_big_cycle'] = int(data['loops_per_big_cycle'])
+        
+        # Update proxy settings
+        if 'use_proxy' in data:
+            config['use_proxy'] = bool(data['use_proxy'])
+        if 'proxy_list' in data:
+            proxies = data['proxy_list']
+            if isinstance(proxies, str):
+                proxies = [p.strip() for p in proxies.split(',') if p.strip()]
+            config['proxy_list'] = proxies
         
         save_config(config)
         add_log("Configuration updated", "success")

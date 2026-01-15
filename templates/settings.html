@@ -237,6 +237,29 @@
         </div>
 
         <div class="card">
+            <h2>🌐 Proxy Configuration</h2>
+            <form id="proxyForm">
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="useProxy" style="width: auto; margin-right: 10px;">
+                        Enable Proxy Rotation
+                    </label>
+                    <small>Use rotating proxies for each request to avoid IP-based detection</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="proxyList">SOCKS5 Proxy List (one per line or comma-separated)</label>
+                    <textarea id="proxyList" placeholder="socks5://username:password@host:port&#10;socks5://username:password@host2:port"></textarea>
+                    <small>Format: socks5://username:password@host:port. Failed proxies will be automatically blacklisted.</small>
+                </div>
+
+                <div class="codes-preview" id="proxyPreview"></div>
+                
+                <button type="submit" class="btn btn-primary">💾 Save Proxy Settings</button>
+            </form>
+        </div>
+
+        <div class="card">
             <h2>🔄 Keep-Alive Status</h2>
             <div class="keep-alive-status">
                 <div class="status-item">
@@ -283,6 +306,11 @@
                 document.getElementById('waitBetweenLoops').value = config.wait_between_loops;
                 document.getElementById('loopsPerBigCycle').value = config.loops_per_big_cycle;
 
+                // Load proxy settings
+                document.getElementById('useProxy').checked = config.use_proxy || false;
+                document.getElementById('proxyList').value = (config.proxy_list || []).join('\n');
+                updateProxyPreview();
+
             } catch (error) {
                 showAlert('Failed to load configuration: ' + error.message, 'error');
             }
@@ -302,7 +330,20 @@
             }
         }
 
+        function updateProxyPreview() {
+            const proxyText = document.getElementById('proxyList').value;
+            const proxies = proxyText.split(/[\n,]/).map(p => p.trim()).filter(p => p);
+            const preview = document.getElementById('proxyPreview');
+            
+            if (proxies.length > 0) {
+                preview.innerHTML = `<span class="code-badge">${proxies.length} proxies configured</span>`;
+            } else {
+                preview.innerHTML = '<span style="color: #999;">No proxies added yet</span>';
+            }
+        }
+
         document.getElementById('codes').addEventListener('input', updateCodesPreview);
+        document.getElementById('proxyList').addEventListener('input', updateProxyPreview);
 
         document.getElementById('codesForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -359,6 +400,40 @@
                 }
             } catch (error) {
                 showAlert('Error saving timing: ' + error.message, 'error');
+            }
+        });
+
+        document.getElementById('proxyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const proxyText = document.getElementById('proxyList').value;
+            const proxies = proxyText.split(/[\n,]/).map(p => p.trim()).filter(p => p);
+            const useProxy = document.getElementById('useProxy').checked;
+
+            const config = {
+                use_proxy: useProxy,
+                proxy_list: proxies
+            };
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const statusMsg = useProxy ? 
+                        `Proxy enabled with ${proxies.length} proxies!` : 
+                        'Proxy disabled!';
+                    showAlert('Proxy settings saved: ' + statusMsg, 'success');
+                } else {
+                    showAlert('Failed to save proxy settings: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showAlert('Error saving proxy settings: ' + error.message, 'error');
             }
         });
 

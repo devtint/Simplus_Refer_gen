@@ -64,12 +64,18 @@ USER_AGENTS = [
 ]
 
 class SimplusAutoReferBot:
-    def __init__(self):
+    def __init__(self, proxy_list=None, use_proxy=False):
         self.client = None
         self.current_email = None
         self.verification_code = None
         self.email_received = asyncio.Event()
         self.code_received = asyncio.Event()
+        
+        # Proxy configuration
+        self.use_proxy = use_proxy
+        self.proxy_list = proxy_list if proxy_list else []
+        self.failed_proxies = set()  # Track failed proxies
+        self.current_proxy = None
         
         # Setup requests session for Simplus API with random User-Agent
         self.session = requests.Session()
@@ -81,6 +87,39 @@ class SimplusAutoReferBot:
             "Origin": "https://m.simplus.online",
             "Cookie": "hello"
         })
+        
+        # Set proxy if enabled
+        if self.use_proxy and self.proxy_list:
+            self._rotate_proxy()
+    
+    def _rotate_proxy(self):
+        """Select a random working proxy from the list"""
+        available_proxies = [p for p in self.proxy_list if p not in self.failed_proxies]
+        
+        if not available_proxies:
+            print("⚠️ All proxies have failed! Resetting failed proxy list...")
+            self.failed_proxies.clear()
+            available_proxies = self.proxy_list.copy()
+        
+        if available_proxies:
+            self.current_proxy = random.choice(available_proxies)
+            self.session.proxies = {
+                'http': self.current_proxy,
+                'https': self.current_proxy
+            }
+            print(f"🌐 Using proxy: {self.current_proxy.split('@')[1] if '@' in self.current_proxy else self.current_proxy}")
+        else:
+            print("⚠️ No proxies available, running without proxy")
+            self.session.proxies = {}
+            self.current_proxy = None
+    
+    def _mark_proxy_failed(self):
+        """Mark current proxy as failed and rotate to a new one"""
+        if self.current_proxy:
+            self.failed_proxies.add(self.current_proxy)
+            print(f"❌ Proxy failed and blacklisted: {self.current_proxy.split('@')[1] if '@' in self.current_proxy else self.current_proxy}")
+            print(f"📊 Failed proxies: {len(self.failed_proxies)}/{len(self.proxy_list)}")
+            self._rotate_proxy()
 
     async def setup_telegram(self):
         """Setup Telegram client with event handlers"""
@@ -135,9 +174,14 @@ class SimplusAutoReferBot:
         }
         
         try:
-            response = self.session.post(url, json=payload)
+            response = self.session.post(url, json=payload, timeout=15)
             print(f"✅ Verification code sent to: {email}")
             return response.status_code == 200
+        except (requests.exceptions.ProxyError, requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError) as e:
+            print(f"❌ Proxy/Connection error sending verification: {e}")
+            if self.use_proxy and self.current_proxy:
+                self._mark_proxy_failed()
+            return False
         except Exception as e:
             print(f"❌ Error sending verification: {e}")
             return False
@@ -156,9 +200,14 @@ class SimplusAutoReferBot:
         }
         
         try:
-            response = self.session.post(url, json=payload)
+            response = self.session.post(url, json=payload, timeout=15)
             print(f"✅ Registration completed for: {email} with code: {invitation_code}")
             return response.status_code == 200
+        except (requests.exceptions.ProxyError, requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError) as e:
+            print(f"❌ Proxy/Connection error during registration: {e}")
+            if self.use_proxy and self.current_proxy:
+                self._mark_proxy_failed()
+            return False
         except Exception as e:
             print(f"❌ Registration error: {e}")
             return False
@@ -198,6 +247,10 @@ class SimplusAutoReferBot:
         
         # Rotate User-Agent for each cycle to avoid detection
         self.session.headers.update({"User-Agent": random.choice(USER_AGENTS)})
+        
+        # Rotate proxy for each cycle if enabled
+        if self.use_proxy and self.proxy_list:
+            self._rotate_proxy()
         
         # Step 1: Generate new email
         email = await self.generate_new_email()
