@@ -2,7 +2,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-Active-brightgreen.svg)](https://github.com/devtint/EDUnalPurposeOnly)
+[![Status](https://img.shields.io/badge/status-Active-brightgreen.svg)](https://github.com/devtint/Simplus_Refer_gen)
 
 > **Automated referral generation bot for Simplus platform using temporary emails**
 
@@ -39,13 +39,19 @@ The authors are not responsible for any misuse or violations.
 
 | Feature | Description |
 |---------|-------------|
+| 🌐 **Web Control Panel** | Beautiful dashboard with real-time monitoring |
+| 🔐 **Authentication** | Secure login system with session management |
 | 🔄 **Automated Email Generation** | Uses Telegram bot for temporary emails |
 | 📧 **Smart Verification** | Automatically captures and processes OTP codes |
+| 🎫 **Multi-Code Support** | Process multiple referral codes per cycle |
+| ⚙️ **Dynamic Configuration** | Manage codes and timings via web UI |
 | 📊 **Progress Tracking** | Real-time statistics and success rates |
-| 🎛️ **Cycle Management** | Organized in batches of 50 with user approval |
+| 🎛️ **Cycle Management** | Organized in batches with user approval |
+| 🔄 **Keep-Alive System** | Prevents Render from sleeping |
 | 📱 **Telegram Integration** | Seamless bot communication |
 | 🛡️ **Error Handling** | Robust error recovery and timeout management |
-| 📈 **Statistics Dashboard** | Detailed success/failure analytics |
+| 📈 **Live Logs** | Activity logs with color-coded levels |
+| ⏸️ **Pause/Resume** | Control bot execution on the fly |
 
 ---
 
@@ -53,20 +59,20 @@ The authors are not responsible for any misuse or violations.
 
 ### Prerequisites
 
-- **Python 3.7+** installed on your system
+- **Python 3.12+** installed on your system
 - **Telegram account** with API access
 - **Stable internet connection**
-- **Simplus account** with referral code
+- **Simplus account** with referral codes
 
 ### 1. 📥 Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/devtint/EDUnalPurposeOnly.git
-cd EDUnalPurposeOnly
+git clone https://github.com/devtint/Simplus_Refer_gen.git
+cd Simplus_Refer_gen
 
 # Install dependencies
-pip install telethon requests
+pip install -r requirements.txt
 ```
 
 ### 2. 🔑 Get Telegram API Credentials
@@ -77,7 +83,7 @@ pip install telethon requests
 4. Create a new application
 5. Save your `API_ID` and `API_HASH`
 
-### 4. 📧 Setup TempMail Bot
+### 3. 📧 Setup TempMail Bot
 
 **IMPORTANT**: Before running the script, you must activate the TempMail bot:
 
@@ -88,25 +94,199 @@ pip install telethon requests
 
 > ⚠️ **Critical**: The script will fail if @TempMail_org_bot is not started and working properly!
 
-### 5. ⚙️ Configuration
+### 4. ⚙️ Configuration
 
-Open `automated.py` and update these values:
-
-```python
-# Replace with your actual credentials
-API_ID = 'your_api_id_here'           # From my.telegram.org
-API_HASH = 'your_api_hash_here'       # From my.telegram.org  
-PHONE_NUMBER = '+1234567890'          # Your phone with country code
-
-# Most Important: Change to YOUR referral code
-"invitation_code": "YOUR_REFERRAL_CODE_HERE"  # This generates referrals for YOU
-```
-
-### 6. 🎮 Run the Bot
+**Setup `.env` file**:
 
 ```bash
-python automated.py
+cp .env.example .env
 ```
+
+**Edit `.env` with your credentials**:
+
+```env
+API_ID=your_api_id_here
+API_HASH=your_api_hash_here
+PHONE_NUMBER=+your_phone_number
+NATION_CODE=66
+INVITATION_CODES=CODE1,CODE2,CODE3,CODE4,CODE5
+KEEP_ALIVE_URL=https://your-app-name.onrender.com
+WEB_USERNAME=admin
+WEB_PASSWORD=your_secure_password
+```
+
+> 🔒 **Security**: Your `.env` file contains sensitive data and is automatically ignored by git
+
+### 5. 🎮 Run the Bot
+
+**Local Development:**
+```bash
+python app.py
+```
+
+Then visit: `http://localhost:5000`
+
+**Default Login:**
+- Username: `admin`
+- Password: (whatever you set in `.env`)
+
+### 6. 🌐 Deploy to Render (Production)
+
+#### 📋 Pre-Deployment Checklist
+
+✅ **Complete these steps first:**
+
+1. **Run Verification Script**:
+   ```bash
+   python setup_check.py
+   ```
+   Ensure all checks pass before deployment!
+
+2. **Test Locally**:
+   ```bash
+   python app.py
+   ```
+   Visit `http://localhost:5000` and verify everything works
+
+3. **Create Telegram Session**:
+   - Run the bot locally first
+   - Authenticate with Telegram when prompted
+   - A `session.session` file will be created
+   - ⚠️ This file MUST be pushed to GitHub for Render deployment
+
+4. **Generate Secret Key**:
+   ```bash
+   python -c "import secrets; print(secrets.token_hex(32))"
+   ```
+   Save this for environment variables
+
+#### 🚀 Step-by-Step Render Deployment
+
+**Step 1: Prepare GitHub Repository**
+
+```bash
+# Initialize git (if not already done)
+git init
+git add .
+git commit -m "Initial commit"
+
+# Create GitHub repository and push
+git remote add origin https://github.com/yourusername/your-repo-name.git
+git branch -M main
+git push -u origin main
+```
+
+**Step 2: Create Render Web Service**
+
+1. Go to [render.com](https://render.com) and sign up/login
+2. Click **"New +"** → **"Web Service"**
+3. Connect your GitHub account
+4. Select your repository
+5. Configure service:
+   - **Name**: `simplus-bot` (or your choice)
+   - **Region**: Choose closest to you
+   - **Branch**: `main`
+   - **Root Directory**: Leave empty
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python app.py`
+   - **Instance Type**: `Free`
+
+**Step 3: Configure Environment Variables**
+
+In Render dashboard, go to **"Environment"** tab and add:
+
+```env
+API_ID=your_api_id
+API_HASH=your_api_hash
+PHONE_NUMBER=+your_phone_number
+NATION_CODE=66
+INVITATION_CODES=CODE1,CODE2,CODE3,CODE4,CODE5
+KEEP_ALIVE_URL=https://your-app-name.onrender.com
+WEB_USERNAME=admin
+WEB_PASSWORD=your_secure_password
+SECRET_KEY=your_generated_secret_key
+```
+
+> 📝 **Note**: `KEEP_ALIVE_URL` should be your actual Render app URL (shown after deployment)
+
+**Step 4: Deploy**
+
+1. Click **"Create Web Service"**
+2. Wait for build to complete (5-10 minutes)
+3. Once deployed, you'll get a URL like: `https://your-app-name.onrender.com`
+4. Update `KEEP_ALIVE_URL` environment variable with this URL
+
+**Step 5: Update Keep-Alive URL**
+
+1. Copy your Render app URL
+2. Go to **Environment** tab
+3. Edit `KEEP_ALIVE_URL` variable
+4. Paste your app URL
+5. Save changes (app will redeploy automatically)
+
+**Step 6: Setup External Keep-Alive Service**
+
+⚠️ **Important**: Render free tier sleeps after 15 minutes of inactivity!
+
+**Option A: Cron-Job.org (Recommended)**
+
+1. Visit [cron-job.org](https://cron-job.org)
+2. Sign up for free account
+3. Create new cron job:
+   - **Title**: Simplus Bot Keep-Alive
+   - **URL**: `https://your-app-name.onrender.com/ping`
+   - **Schedule**: Every 5 minutes
+   - **Enable**: ✅
+4. Save and activate
+
+**Option B: UptimeRobot**
+
+1. Visit [uptimerobot.com](https://uptimerobot.com)
+2. Sign up for free account
+3. Add new monitor:
+   - **Monitor Type**: HTTP(s)
+   - **Friendly Name**: Simplus Bot
+   - **URL**: `https://your-app-name.onrender.com/ping`
+   - **Monitoring Interval**: 5 minutes
+4. Create monitor
+
+**Step 7: Access Your Bot**
+
+1. Visit your Render app URL
+2. Login with credentials from `WEB_USERNAME` and `WEB_PASSWORD`
+3. Go to **Settings** page
+4. Configure invitation codes and timing
+5. Click **Start Bot** from Dashboard
+
+#### 🔧 Troubleshooting Deployment
+
+| Issue | Solution |
+|-------|----------|
+| **Build Failed** | Check `requirements.txt` syntax, verify Python 3.12 compatibility |
+| **Session Error** | Run bot once locally to create `session.session`, then manually upload to Render (not via git) |
+| **App Crashes** | Check Render logs, verify all environment variables are set |
+| **Can't Login** | Verify `WEB_USERNAME` and `WEB_PASSWORD` environment variables |
+| **Bot Sleeps** | Ensure keep-alive is active (check dashboard) and `KEEP_ALIVE_URL` is set correctly |
+| **Keep-Alive Red** | Check `KEEP_ALIVE_URL` matches your Render app URL |
+
+#### 📊 Post-Deployment Monitoring
+
+1. **Check Keep-Alive Status**:
+   - Dashboard shows green indicator when active
+   - Last ping time displayed
+
+2. **Monitor Activity Logs**:
+   - Real-time logs on Dashboard
+   - Color-coded by severity
+
+3. **Track Success Rate**:
+   - Statistics panel updates every 2 seconds
+   - Shows current progress and efficiency
+
+4. **Render Logs**:
+   - Access via Render dashboard
+   - "Logs" tab shows detailed output
 
 ---
 
@@ -234,12 +414,23 @@ logging.basicConfig(level=logging.DEBUG)
 ## 📁 Project Structure
 
 ```
-📂 EDUnalPurposeOnly/
-├── 📄 automated.py          # Main bot script
-├── 📄 README.md            # This documentation  
-├── 📄 LICENSE              # MIT License
+📂 Simplus_Refer_gen/
+├── 📄 app.py               # Flask web application
+├── 📄 automated.py         # Core bot logic
+├── 📄 config.json          # Runtime configuration
+├── 📄 .env                 # Environment variables (local)
+├── 📄 .env.example         # Environment template
 ├── 📄 .gitignore           # Git exclusions
-├── 📄 requirements.txt     # Dependencies
+├── 📄 requirements.txt     # Python dependencies
+├── 📄 Procfile             # Render deployment config
+├── 📄 runtime.txt          # Python version
+├── 📄 setup_check.py       # Verification script
+├── 📄 README.md            # This documentation
+├── 📄 LICENSE              # MIT License
+├── 📂 templates/           # HTML templates
+│   ├── dashboard.html      # Control panel
+│   ├── settings.html       # Configuration page
+│   └── login.html          # Authentication
 └── 📂 .git/               # Git repository
 ```
 
@@ -258,7 +449,7 @@ We welcome contributions! Here's how:
 ### Development Setup
 ```bash
 # Clone your fork
-git clone https://github.com/yourusername/EDUnalPurposeOnly.git
+git clone https://github.com/yourusername/Simplus_Refer_gen.git
 
 # Create virtual environment
 python -m venv venv
@@ -287,9 +478,10 @@ The bot provides comprehensive tracking:
 ### Getting Help
 
 1. **📚 Check Documentation**: Read this README thoroughly
-2. **🐛 Search Issues**: Look for existing solutions
-3. **💬 Create Issue**: Provide detailed error information
-4. **📧 Contact**: Reach out for complex problems
+2. **� Join Telegram Community**: [t.me/RootLayerR](https://t.me/RootLayerR) - Ask questions and get quick help
+3. **🐛 Search Issues**: Look for existing solutions on GitHub
+4. **💡 Create Issue**: Provide detailed error information with logs
+5. **⭐ Star the Repo**: Support the project at [github.com/devtint/Simplus_Refer_gen](https://github.com/devtint/Simplus_Refer_gen)
 
 ### Issue Template
 ```
@@ -308,7 +500,39 @@ The bot provides comprehensive tracking:
 
 ---
 
-## 📜 License
+## � Join Our Community
+
+<div align="center">
+
+### 🎯 Connect With Us!
+
+[![Telegram Community](https://img.shields.io/badge/Telegram-Join%20Community-blue?style=for-the-badge&logo=telegram)](https://t.me/RootLayerR)
+[![GitHub Stars](https://img.shields.io/github/stars/devtint/Simplus_Refer_gen?style=for-the-badge&logo=github)](https://github.com/devtint/Simplus_Refer_gen)
+
+</div>
+
+**Join our Telegram community for:**
+
+- 💡 **Tips & Tricks**: Learn best practices from experienced users
+- 🐛 **Quick Support**: Get help from community members
+- 📢 **Updates**: Stay informed about new features and improvements
+- 🤝 **Collaboration**: Share your experiences and help others
+- 🎉 **Exclusive Content**: Early access to updates and features
+
+**Community Guidelines:**
+- ✅ Be respectful and helpful
+- ✅ Share knowledge and experiences
+- ✅ Report bugs and suggest features
+- ❌ No spam or self-promotion
+- ❌ No sharing of personal credentials
+
+**Quick Links:**
+- 📱 Telegram: [t.me/RootLayerR](https://t.me/RootLayerR)
+- ⭐ GitHub: [github.com/devtint/Simplus_Refer_gen](https://github.com/devtint/Simplus_Refer_gen)
+
+---
+
+## �📜 License
 
 This project is licensed under the [MIT License](LICENSE).
 
@@ -341,10 +565,12 @@ Users are responsible for ensuring compliance with platform terms of service and
 
 ---
 
-## 📞 Contact
+## 📞 Contact & Links
 
-- **GitHub**: [@devtint](https://github.com/devtint)
-- **Project**: [EDUnalPurposeOnly](https://github.com/devtint/EDUnalPurposeOnly)
+- **🌟 GitHub**: [@devtint](https://github.com/devtint)
+- **📦 Project**: [Simplus_Refer_gen](https://github.com/devtint/Simplus_Refer_gen)
+- **💬 Telegram**: [t.me/RootLayerR](https://t.me/RootLayerR)
+- **⭐ Star Us**: [GitHub Repository](https://github.com/devtint/Simplus_Refer_gen)
 
 ---
 
@@ -354,6 +580,6 @@ Users are responsible for ensuring compliance with platform terms of service and
 
 *Use responsibly and ethically*
 
-[⭐ Star this repo](https://github.com/devtint/EDUnalPurposeOnly) • [🐛 Report Bug](https://github.com/devtint/EDUnalPurposeOnly/issues) • [✨ Request Feature](https://github.com/devtint/EDUnalPurposeOnly/issues)
+[⭐ Star this repo](https://github.com/devtint/Simplus_Refer_gen) • [💬 Join Community](https://t.me/RootLayerR) • [🐛 Report Bug](https://github.com/devtint/Simplus_Refer_gen/issues) • [✨ Request Feature](https://github.com/devtint/Simplus_Refer_gen/issues)
 
 </div>

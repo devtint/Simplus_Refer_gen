@@ -3,6 +3,10 @@
 session.*
 *.session-journal
 
+# Configuration files
+.env
+config.json
+
 # Backup files
 *.back
 back.*

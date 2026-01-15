@@ -25,12 +25,23 @@ import re
 import requests
 from telethon import TelegramClient, events
 import time
+import os
+from dotenv import load_dotenv
 
-# Your Telegram API credentials (from https://my.telegram.org)
-# IMPORTANT: Replace these example values with your actual credentials!
-API_ID = '12345678'  # Replace with your actual API ID from my.telegram.org
-API_HASH = 'your_api_hash_here'  # Replace with your actual API HASH from my.telegram.org
-PHONE_NUMBER = '+1234567890'  # Replace with your actual phone number (with country code)
+# Load environment variables from .env file
+load_dotenv()
+
+# Your Telegram API credentials (from .env file)
+API_ID = os.getenv('API_ID')
+API_HASH = os.getenv('API_HASH')
+PHONE_NUMBER = os.getenv('PHONE_NUMBER')
+
+# Validate required credentials
+if not all([API_ID, API_HASH, PHONE_NUMBER]):
+    raise ValueError("Missing required Telegram credentials in .env file")
+
+# Load invitation codes (supports multiple codes separated by comma)
+INVITATION_CODES = [code.strip() for code in os.getenv('INVITATION_CODES', '').split(',') if code.strip()]
 
 # Temp mail bot username
 # IMPORTANT: Make sure to start @TempMail_org_bot on Telegram before running this script!
@@ -104,7 +115,7 @@ class SimplusAutoReferBot:
         payload = {
             "account": email,
             "account_type": "email",
-            "nation_code": "66",
+            "nation_code": os.getenv('NATION_CODE'),
             "is_register": True
         }
         
@@ -116,7 +127,7 @@ class SimplusAutoReferBot:
             print(f"❌ Error sending verification: {e}")
             return False
 
-    def register_user(self, email, verification_code):
+    def register_user(self, email, verification_code, invitation_code):
         """Register new user with your referral code to generate a referral for your account"""
         url = "https://m.simplus.online/crmapi/register_user/"
         
@@ -125,13 +136,13 @@ class SimplusAutoReferBot:
             "account": email,
             "email": email,
             "code": verification_code,
-            "nation_code": "66",
-            "invitation_code": "TH2511134LYR"  # IMPORTANT: Change this to your actual referral code!
+            "nation_code": os.getenv('NATION_CODE'),
+            "invitation_code": invitation_code
         }
         
         try:
             response = self.session.post(url, json=payload)
-            print(f"✅ Registration completed for: {email}")
+            print(f"✅ Registration completed for: {email} with code: {invitation_code}")
             return response.status_code == 200
         except Exception as e:
             print(f"❌ Registration error: {e}")
@@ -164,11 +175,11 @@ class SimplusAutoReferBot:
             print("❌ Timeout waiting for verification code")
             return None
 
-    async def run_cycle(self, cycle_number):
+    async def run_cycle(self, loop_count, code_index, total_codes, invitation_code):
         """Run one complete referral generation cycle"""
-        print(f"\n{'='*50}")
-        print(f"🔄 STARTING CYCLE {cycle_number}")
-        print(f"{'='*50}")
+        print(f"\n{'='*60}")
+        print(f"🔄 LOOP {loop_count} | Processing Code {code_index}/{total_codes}: {invitation_code}")
+        print(f"{'='*60}")
         
         # Step 1: Generate new email
         email = await self.generate_new_email()
@@ -185,31 +196,18 @@ class SimplusAutoReferBot:
             return False
         
         # Step 4: Register user
-        success = self.register_user(email, code)
+        success = self.register_user(email, code, invitation_code)
         
         if success:
-            print(f"✅ CYCLE {cycle_number} COMPLETED SUCCESSFULLY!")
+            print(f"✅ LOOP {loop_count} - Code {code_index}/{total_codes} COMPLETED SUCCESSFULLY!")
         else:
-            print(f"❌ CYCLE {cycle_number} FAILED!")
+            print(f"❌ LOOP {loop_count} - Code {code_index}/{total_codes} FAILED!")
         
         return success
 
-    async def send_thank_you_message(self):
-        """Send thank you message to BadCodeWriter"""
-        try:
-            await self.client.send_message('@BadCodeWriter', 'Hi I am using the script and thanks for your help')
-            print("✅ Thank you message sent to @BadCodeWriter")
-        except Exception as e:
-            print(f"⚠️ Could not send thank you message: {e}")
+    # Removed: No longer sending thank you messages
 
-    async def send_completion_message(self, big_cycle_num, cycles_completed, success_count):
-        """Send completion message to BadCodeWriter after big cycle"""
-        try:
-            message = f"I have finished Big Cycle {big_cycle_num} (Completed {cycles_completed} cycles with {success_count} successes). Obtained 1000 coins, Thank you! 🎉"
-            await self.client.send_message('@BadCodeWriter', message)
-            print("✅ Completion message sent to @BadCodeWriter")
-        except Exception as e:
-            print(f"⚠️ Could not send completion message: {e}")
+    # Removed: No longer sending completion messages
 
     def get_user_approval(self):
         """Get user approval to continue with next big cycle"""
@@ -226,7 +224,12 @@ class SimplusAutoReferBot:
         """Run continuous referral generation cycles with big cycle management"""
         print("🤖 SIMPLUS FULLY AUTOMATED REFERRAL BOT")
         print("🚀 Starting fully automated referral generation...")
-        print("📋 Big Cycle = 50 referrals | Approval required after each Big Cycle")
+        print(f"📋 Big Cycle = 50 loops | {len(INVITATION_CODES)} codes per loop | Approval required after each Big Cycle")
+        print(f"📝 Loaded {len(INVITATION_CODES)} invitation codes: {', '.join(INVITATION_CODES)}")
+        
+        if not INVITATION_CODES:
+            print("❌ ERROR: No invitation codes found in .env file!")
+            return
         
         # Setup Telegram
         await self.setup_telegram()
@@ -234,28 +237,43 @@ class SimplusAutoReferBot:
         # Send thank you message
         await self.send_thank_you_message()
         
-        cycle_count = 1
-        success_count = 0
+        loop_count = 1
+        total_success_count = 0
         big_cycle_count = 1
-        CYCLES_PER_BIG_CYCLE = 50
+        LOOPS_PER_BIG_CYCLE = 50
         
         try:
             while True:
-                # Run one cycle
-                success = await self.run_cycle(cycle_count)
-                if success:
-                    success_count += 1
+                print(f"\n{'='*60}")
+                print(f"🔄 STARTING LOOP {loop_count} - Processing {len(INVITATION_CODES)} referral codes")
+                print(f"{'='*60}")
                 
-                cycles_in_current_big_cycle = ((cycle_count - 1) % CYCLES_PER_BIG_CYCLE) + 1
-                print(f"\n📊 Statistics: {success_count}/{cycle_count} successful | Big Cycle {big_cycle_count}: {cycles_in_current_big_cycle}/{CYCLES_PER_BIG_CYCLE}")
+                loop_success_count = 0
+                
+                # Process each invitation code in this loop
+                for idx, invitation_code in enumerate(INVITATION_CODES, 1):
+                    success = await self.run_cycle(loop_count, idx, len(INVITATION_CODES), invitation_code)
+                    if success:
+                        loop_success_count += 1
+                        total_success_count += 1
+                    
+                    # Wait 10 seconds between each code (except after the last one)
+                    if idx < len(INVITATION_CODES):
+                        print("⏳ Waiting 10 seconds before next code...")
+                        await asyncio.sleep(10)
+                
+                print(f"\n✅ Loop {loop_count} completed: {loop_success_count}/{len(INVITATION_CODES)} successful")
+                
+                loops_in_current_big_cycle = ((loop_count - 1) % LOOPS_PER_BIG_CYCLE) + 1
+                print(f"📊 Overall Statistics: {total_success_count} total successful | Big Cycle {big_cycle_count}: {loops_in_current_big_cycle}/{LOOPS_PER_BIG_CYCLE} loops")
                 
                 # Check if big cycle is complete
-                if cycle_count % CYCLES_PER_BIG_CYCLE == 0:
+                if loop_count % LOOPS_PER_BIG_CYCLE == 0:
                     print(f"\n🎉 BIG CYCLE {big_cycle_count} COMPLETED!")
-                    print(f"📊 Results: {success_count}/{cycle_count} total successful referrals generated")
+                    print(f"📊 Results: {total_success_count} total successful referrals generated")
                     
                     # Send completion message to BadCodeWriter
-                    await self.send_completion_message(big_cycle_count, CYCLES_PER_BIG_CYCLE, success_count)
+                    await self.send_completion_message(big_cycle_count, LOOPS_PER_BIG_CYCLE, total_success_count)
                     
                     # Ask for approval to continue
                     if not self.get_user_approval():
@@ -265,12 +283,13 @@ class SimplusAutoReferBot:
                     big_cycle_count += 1
                     print(f"\n🚀 Starting Big Cycle {big_cycle_count}...")
                 
-                cycle_count += 1
+                loop_count += 1
                 
-                # Wait before next cycle (only if not at end of big cycle)
-                if cycle_count % CYCLES_PER_BIG_CYCLE != 1:
-                    print("⏳ Waiting 5 seconds before next cycle...")
-                    await asyncio.sleep(5)
+                # Wait 6000 seconds after completing all codes (only if not at end of big cycle)
+                if loop_count % LOOPS_PER_BIG_CYCLE != 1:
+                    print("⏳ Waiting 6000 seconds before next loop...")
+                    #recommend very long interval to avoid detect
+                    await asyncio.sleep(6000)
                 
         except KeyboardInterrupt:
             print("\n\n🛑 Bot stopped by user")

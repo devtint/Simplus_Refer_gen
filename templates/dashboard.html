@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplus Bot Control Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-pause {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-running {
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .status-stopped {
+            background: #dc3545;
+        }
+
+        .status-paused {
+            background: #ffc107;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.3; }
+        }
+
+        .logs-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .logs-container h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .log-entry {
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            border-left: 4px solid #667eea;
+        }
+
+        .log-info {
+            background: #e3f2fd;
+            border-left-color: #2196F3;
+        }
+
+        .log-success {
+            background: #e8f5e9;
+            border-left-color: #4CAF50;
+        }
+
+        .log-warning {
+            background: #fff3e0;
+            border-left-color: #FF9800;
+        }
+
+        .log-error {
+            background: #ffebee;
+            border-left-color: #F44336;
+        }
+
+        .log-timestamp {
+            color: #666;
+            font-size: 0.85em;
+            margin-right: 10px;
+        }
+
+        .codes-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .code-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            background: #f0f0f0;
+            border-radius: 10px;
+            height: 30px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Simplus Bot Control Panel</h1>
+            <p>Automated Referral Generation System</p>
+            <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <a href="https://github.com/devtint/Simplus_Refer_gen" target="_blank" style="color: white; text-decoration: none; padding: 8px 15px; background: rgba(255,255,255,0.3); border-radius: 20px; font-size: 0.9em; transition: background 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.4)'" onmouseout="this.style.background='rgba(255,255,255,0.3)'">⭐ Star on GitHub</a>
+                <a href="https://t.me/RootLayerR" target="_blank" style="color: white; text-decoration: none; padding: 8px 15px; background: rgba(255,255,255,0.3); border-radius: 20px; font-size: 0.9em; transition: background 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.4)'" onmouseout="this.style.background='rgba(255,255,255,0.3)'">💬 Join Community</a>
+            </div>
+        </div>
+
+        <div class="nav" style="display: flex; gap: 15px; margin-bottom: 30px; justify-content: center;">
+            <a href="/" style="color: white; text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.2); border-radius: 10px;">🏠 Dashboard</a>
+            <a href="/settings" style="color: white; text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.2); border-radius: 10px;">⚙️ Settings</a>
+            <a href="/logout" style="color: white; text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.2); border-radius: 10px;">🚪 Logout</a>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h2>🎮 Bot Controls</h2>
+                <div class="controls">
+                    <button id="startBtn" class="btn btn-start" onclick="startBot()">▶ Start</button>
+                    <button id="pauseBtn" class="btn btn-pause" onclick="pauseBot()" disabled>⏸ Pause</button>
+                    <button id="stopBtn" class="btn btn-stop" onclick="stopBot()" disabled>⏹ Stop</button>
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+                    <span id="statusIndicator" class="status-indicator status-stopped"></span>
+                    <span id="statusText" style="font-weight: bold;">Status: Stopped</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Statistics</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="currentLoop">0</div>
+                        <div class="stat-label">Current Loop</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalSuccess">0</div>
+                        <div class="stat-label">Total Success</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalAttempts">0</div>
+                        <div class="stat-label">Total Attempts</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="successRate">0%</div>
+                        <div class="stat-label">Success Rate</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🎯 Big Cycle Progress</h2>
+                <div class="stat-item">
+                    <div class="stat-value" id="bigCycle">1</div>
+                    <div class="stat-label">Big Cycle #</div>
+                </div>
+                <div class="progress-bar">
+                    <div id="progressBar" class="progress-fill" style="width: 0%">0 / 50 Loops</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🎫 Invitation Codes</h2>
+                <div class="stat-item">
+                    <div class="stat-value" id="codesCount">0</div>
+                    <div class="stat-label">Active Codes</div>
+                </div>
+                <div id="codesList" class="codes-list"></div>
+            </div>
+
+            <div class="card">
+                <h2>🔄 Keep-Alive Status</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="keepAliveStatus" style="font-size: 1.5em;">🔴</div>
+                        <div class="stat-label">Status</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="lastPing" style="font-size: 0.9em;">-</div>
+                        <div class="stat-label">Last Ping</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="logs-container">
+            <h2>📝 Activity Logs</h2>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        let updateInterval;
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 3000);
+        }
+
+        async function startBot() {
+            try {
+                const response = await fetch('/api/start', { method: 'POST' });
+                const data = await response.json();
+                showAlert(data.message, data.success ? 'success' : 'error');
+                if (data.success) {
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('pauseBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = false;
+                }
+            } catch (error) {
+                showAlert('Failed to start bot: ' + error.message, 'error');
+            }
+        }
+
+        async function stopBot() {
+            try {
+                const response = await fetch('/api/stop', { method: 'POST' });
+                const data = await response.json();
+                showAlert(data.message, data.success ? 'success' : 'error');
+                if (data.success) {
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('pauseBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = true;
+                }
+            } catch (error) {
+                showAlert('Failed to stop bot: ' + error.message, 'error');
+            }
+        }
+
+        async function pauseBot() {
+            try {
+                const response = await fetch('/api/pause', { method: 'POST' });
+                const data = await response.json();
+                showAlert(data.message, data.success ? 'success' : 'error');
+                const pauseBtn = document.getElementById('pauseBtn');
+                pauseBtn.textContent = data.paused ? '▶ Resume' : '⏸ Pause';
+            } catch (error) {
+                showAlert('Failed to pause bot: ' + error.message, 'error');
+            }
+        }
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                // Update status indicator
+                const indicator = document.getElementById('statusIndicator');
+                const statusText = document.getElementById('statusText');
+                
+                if (data.running && !data.paused) {
+                    indicator.className = 'status-indicator status-running';
+                    statusText.textContent = 'Status: Running';
+                } else if (data.running && data.paused) {
+                    indicator.className = 'status-indicator status-paused';
+                    statusText.textContent = 'Status: Paused';
+                } else {
+                    indicator.className = 'status-indicator status-stopped';
+                    statusText.textContent = 'Status: Stopped';
+                }
+
+                // Update statistics
+                document.getElementById('currentLoop').textContent = data.current_loop;
+                document.getElementById('totalSuccess').textContent = data.total_success;
+                document.getElementById('totalAttempts').textContent = data.total_attempts;
+                
+                const successRate = data.total_attempts > 0 
+                    ? Math.round((data.total_success / data.total_attempts) * 100) 
+                    : 0;
+                document.getElementById('successRate').textContent = successRate + '%';
+
+                // Update big cycle progress
+                document.getElementById('bigCycle').textContent = data.current_big_cycle;
+                const progressPercent = (data.loops_in_cycle / 50) * 100;
+                const progressBar = document.getElementById('progressBar');
+                progressBar.style.width = progressPercent + '%';
+                progressBar.textContent = `${data.loops_in_cycle} / 50 Loops`;
+
+                // Update codes
+                document.getElementById('codesCount').textContent = data.codes_count;
+
+                // Update keep-alive status
+                const keepAliveStatus = data.keep_alive_status;
+                document.getElementById('keepAliveStatus').textContent = keepAliveStatus.status === 'active' ? '🟢' : '🔴';
+                document.getElementById('lastPing').textContent = keepAliveStatus.last_ping || 'Never';
+
+                // Update logs
+                const logsContainer = document.getElementById('logs');
+                logsContainer.innerHTML = data.logs.map(log => `
+                    <div class="log-entry log-${log.level}">
+                        <span class="log-timestamp">${log.timestamp}</span>
+                        <span>${log.message}</span>
+                    </div>
+                `).join('');
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+
+            } catch (error) {
+                console.error('Failed to update status:', error);
+            }
+        }
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const data = await response.json();
+
+                const codesList = document.getElementById('codesList');
+                if (data.invitation_codes && data.invitation_codes.length > 0) {
+                    codesList.innerHTML = data.invitation_codes.map(code => 
+                        `<span class="code-badge">${code}</span>`
+                    ).join('');
+                } else {
+                    codesList.innerHTML = '<span style="color: #999;">No codes configured. Go to Settings to add codes.</span>';
+                }
+            } catch (error) {
+                console.error('Failed to load config:', error);
+            }
+        }
+
+        // Initialize
+        loadConfig();
+        updateStatus();
+        updateInterval = setInterval(updateStatus, 2000); // Update every 2 seconds
+    </script>
+</body>
+</html>
