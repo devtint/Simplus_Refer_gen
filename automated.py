@@ -409,7 +409,7 @@ class SimplusAutoReferBot:
         """Run continuous referral generation cycles with big cycle management"""
         print("🤖 SIMPLUS FULLY AUTOMATED REFERRAL BOT")
         print("🚀 Starting fully automated referral generation...")
-        print("📧 Using mail.tm API for temporary emails (No Telegram required!)")
+        print("📧 Using mail.tm API for temporary emails")
         print(f"📋 Big Cycle = 50 loops | {len(INVITATION_CODES)} codes per loop | Approval required after each Big Cycle")
         print(f"📝 Loaded {len(INVITATION_CODES)} invitation codes: {', '.join(INVITATION_CODES)}")
         
@@ -480,7 +480,7 @@ class SimplusAutoReferBot:
 
 async def main():
     print("🚀 Starting Simplus Auto Referral Generator Bot...")
-    print("📧 Now using mail.tm API - No Telegram setup required!")
+    print("📧 Using mail.tm API for reliable temporary emails")
     print(f"Made with ❤️ by TYRELL (Only for educational purposes, NO illegal use!)")
     
     # Configure proxy usage

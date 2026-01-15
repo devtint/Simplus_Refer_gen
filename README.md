@@ -41,14 +41,14 @@ The authors are not responsible for any misuse or violations.
 |---------|-------------|
 | 🌐 **Web Control Panel** | Beautiful dashboard with real-time monitoring |
 | 🔐 **Authentication** | Secure login system with session management |
-| 🔄 **Automated Email Generation** | Uses Telegram bot for temporary emails |
+| 🔄 **Automated Email Generation** | Uses mail.tm API for temporary emails |
 | 📧 **Smart Verification** | Automatically captures and processes OTP codes |
 | 🎫 **Multi-Code Support** | Process multiple referral codes per cycle |
 | ⚙️ **Dynamic Configuration** | Manage codes and timings via web UI |
 | 📊 **Progress Tracking** | Real-time statistics and success rates |
 | 🎛️ **Cycle Management** | Organized in batches with user approval |
 | 🔄 **Keep-Alive System** | Prevents Render from sleeping |
-| 📱 **Telegram Integration** | Seamless bot communication |
+| � **Mail.tm Integration** | Direct API for email generation |
 | 🛡️ **Error Handling** | Robust error recovery and timeout management |
 | 📈 **Live Logs** | Activity logs with color-coded levels |
 | ⏸️ **Pause/Resume** | Control bot execution on the fly |
@@ -60,7 +60,7 @@ The authors are not responsible for any misuse or violations.
 ### Prerequisites
 
 - **Python 3.12+** installed on your system
-- **Telegram account** with API access
+- **Internet connection** for mail.tm API
 - **Stable internet connection**
 - **Simplus account** with referral codes
 
@@ -75,29 +75,17 @@ cd Simplus_Refer_gen
 pip install -r requirements.txt
 ```
 
-### 2. 🔑 Get Telegram API Credentials (Optional)
+### 2. ⚡ Mail.tm Integration
 
-> 📝 **Note**: Telegram credentials are kept for legacy compatibility but **not required** for the new mail.tm integration.
+Uses mail.tm API directly for reliable temporary email generation.
 
-1. Visit [my.telegram.org](https://my.telegram.org) *(Optional)*
-2. Log in with your phone number *(Optional)*
-3. Go to **"API Development Tools"** *(Optional)*
-4. Create a new application *(Optional)*
-5. Save your `API_ID` and `API_HASH` *(Optional)*
+✅ **Benefits:**
+- **Fast**: Direct API calls 
+- **Reliable**: No external dependencies
+- **Simple**: Zero additional setup required
+- **Proxy-friendly**: Full HTTP(S) proxy support
 
-### 3. ⚡ Mail.tm Integration
-
-**NEW**: Now uses mail.tm API directly - **No Telegram bot setup required!**
-
-✅ **Benefits of mail.tm integration:**
-- **Faster**: Direct API calls (no waiting for bot responses)
-- **More reliable**: No dependency on Telegram uptime
-- **Easier setup**: No Telegram session or bot activation needed
-- **Better proxy support**: Full HTTP(S) proxy compatibility
-
-> 🎉 **Zero Telegram setup**: The bot now works completely standalone!
-
-### 4. ⚙️ Configuration
+### 3. ⚙️ Configuration
 
 **Setup `.env` file**:
 
@@ -108,15 +96,22 @@ cp .env.example .env
 **Edit `.env` with your credentials**:
 
 ```env
-API_ID=your_api_id_here
-API_HASH=your_api_hash_here
-PHONE_NUMBER=+your_phone_number
-NATION_CODE=66
+# Required: Your invitation codes (comma-separated)
 INVITATION_CODES=CODE1,CODE2,CODE3,CODE4,CODE5
-KEEP_ALIVE_URL=https://your-app-name.onrender.com
+
+# Required: Web interface credentials
 WEB_USERNAME=admin
 WEB_PASSWORD=your_secure_password
 SECRET_KEY=your-random-secret-key-here
+
+# Optional: Proxy configuration (comma-separated SOCKS5 proxies)
+PROXY_LIST=socks5://user:pass@proxy1:1080,socks5://user:pass@proxy2:1080
+
+# Optional: Keep-alive URL for hosting platforms like Render
+KEEP_ALIVE_URL=https://your-app-name.onrender.com
+
+# Optional: Country/region settings
+NATION_CODE=66
 ```
 
 > 💡 **Tip**: Generate a secure SECRET_KEY with: `python -c "import secrets; print(secrets.token_hex(32))"`
@@ -154,13 +149,7 @@ Then visit: `http://localhost:5000`
    ```
    Visit `http://localhost:5000` and verify everything works
 
-3. **Create Telegram Session**:
-   - Run the bot locally first
-   - Authenticate with Telegram when prompted
-   - A `session.session` file will be created
-   - ⚠️ This file MUST be pushed to GitHub for Render deployment
-
-4. **Generate Secret Key**:
+3. **Generate Secret Key**:
    ```bash
    python -c "import secrets; print(secrets.token_hex(32))"
    ```
@@ -300,27 +289,29 @@ SECRET_KEY=your_generated_secret_key
 
 ```mermaid
 graph TD
-    A[Start Bot] --> B[Connect to Telegram]
-    B --> C[Generate Temp Email]
-    C --> D[Request Verification Code]
-    D --> E[Capture Code from Bot]
-    E --> F[Register with Your Referral Code]
-    F --> G[Success? +1 Referral]
-    G --> H{Big Cycle Complete?}
-    H -->|No| I[Wait 5 seconds]
-    I --> C
-    H -->|Yes| J[Show Statistics]
-    J --> K[Ask User Approval]
-    K -->|Yes| C
-    K -->|No| L[Stop Bot]
+    A[Start Bot] --> B[Load Configuration]
+    B --> C[Initialize mail.tm API]
+    C --> D[Generate Temp Email]
+    D --> E[Register with Your Referral Code]
+    E --> F[Wait for Verification Email]
+    F --> G[Extract Verification Code]
+    G --> H[Complete Registration]
+    H --> I[Success? +1 Referral]
+    I --> J{Big Cycle Complete?}
+    J -->|No| K[Wait 5 seconds]
+    K --> D
+    J -->|Yes| L[Show Statistics]
+    L --> M[Ask User Approval]
+    M -->|Yes| D
+    M -->|No| N[Stop Bot]
 ```
 
 ### Process Flow
 
-1. **🔌 Connection**: Bot connects to Telegram and temp mail service
-2. **📧 Email Generation**: Creates temporary email address  
-3. **🔐 Verification**: Requests and captures verification code
-4. **✅ Registration**: Registers new account with YOUR referral code
+1. **⚙️ Setup**: Bot loads configuration and initializes mail.tm API
+2. **📧 Email Generation**: Creates temporary email address via mail.tm
+3. **✅ Registration**: Registers new account with YOUR referral code
+4. **📨 Verification**: Waits for and processes verification email
 5. **📊 Tracking**: Updates statistics and continues cycle
 6. **🎯 Batching**: Processes in groups of 50 with approval gates
 
@@ -372,12 +363,12 @@ CODE_TIMEOUT = 60   # Max wait for verification code
 
 | Problem | Solution |
 |---------|----------|
-| **API Credentials Invalid** | Double-check API_ID and API_HASH from my.telegram.org |
-| **Phone Number Issues** | Use international format: +1234567890 |
-| **TempMail Bot Not Working** | Start @TempMail_org_bot in Telegram first, generate test email |
-| **Timeout Errors** | Check internet connection, verify TempMail bot is responding |
-| **Verification Failed** | Ensure temp mail bot is responding and messages are received |
-| **Rate Limiting** | Reduce frequency or take breaks |
+| **Mail.tm API Issues** | Check internet connection and retry |
+| **Proxy Connection Failed** | Verify proxy credentials and connectivity |
+| **Email Generation Failed** | Restart bot, mail.tm may be temporarily down |
+| **Timeout Errors** | Check internet connection, increase timeout in settings |
+| **Verification Email Not Received** | Wait longer, mail delivery can take 30-60 seconds |
+| **Rate Limiting** | Enable proxy rotation or reduce frequency |
 
 ### Debug Mode
 
@@ -564,9 +555,9 @@ Users are responsible for ensuring compliance with platform terms of service and
 
 ## 🙏 Acknowledgments
 
-- **TempMail Bot** - For providing temporary email service
-- **Telethon Library** - Excellent Telegram API wrapper  
-- **Requests Library** - HTTP requests made simple
+- **Mail.tm API** - Reliable temporary email service
+- **Flask Framework** - Powerful web framework for dashboard  
+- **Selenium WebDriver** - Web automation capabilities
 - **Community Contributors** - Bug reports and improvements
 
 ---
