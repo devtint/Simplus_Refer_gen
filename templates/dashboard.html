@@ -347,6 +347,42 @@
                     </div>
                 </div>
             </div>
+
+            <div class="card">
+                <h2>🔒 Proxy Status</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="proxyEnabled" style="font-size: 1.5em;">🔴</div>
+                        <div class="stat-label">Proxy</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="proxyCount" style="font-size: 1.2em;">0/0</div>
+                        <div class="stat-label">Active/Total</div>
+                    </div>
+                </div>
+                <div class="stat-item" style="margin-top: 10px;">
+                    <div class="stat-value" id="currentProxy" style="font-size: 0.8em; color: #666;">No proxy</div>
+                    <div class="stat-label">Current Proxy</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📧 Mail.tm Status</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="mailStatus" style="font-size: 1.5em;">🟢</div>
+                        <div class="stat-label">API Status</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="mailGenerated" style="font-size: 1em;">0</div>
+                        <div class="stat-label">Emails Generated</div>
+                    </div>
+                </div>
+                <div class="stat-item" style="margin-top: 10px;">
+                    <div class="stat-value" id="currentEmail" style="font-size: 0.8em; color: #666;">No active email</div>
+                    <div class="stat-label">Current Email</div>
+                </div>
+            </div>
         </div>
 
         <div class="logs-container">
@@ -454,6 +490,19 @@
                 const keepAliveStatus = data.keep_alive_status;
                 document.getElementById('keepAliveStatus').textContent = keepAliveStatus.status === 'active' ? '🟢' : '🔴';
                 document.getElementById('lastPing').textContent = keepAliveStatus.last_ping || 'Never';
+
+                // Update proxy status
+                const proxyInfo = data.proxy_info || {};
+                document.getElementById('proxyEnabled').textContent = proxyInfo.enabled ? '🟢' : '🔴';
+                const activeProxies = proxyInfo.total_proxies - (proxyInfo.failed_proxies || 0);
+                document.getElementById('proxyCount').textContent = `${activeProxies}/${proxyInfo.total_proxies}`;
+                document.getElementById('currentProxy').textContent = proxyInfo.current_proxy || 'No proxy';
+
+                // Update mail.tm status
+                const mailInfo = data.mail_info || {};
+                document.getElementById('mailStatus').textContent = '🟢'; // mail.tm is always ready
+                document.getElementById('mailGenerated').textContent = data.total_success || 0;
+                document.getElementById('currentEmail').textContent = mailInfo.current_email || 'No active email';
 
                 // Update logs
                 const logsContainer = document.getElementById('logs');

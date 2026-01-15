@@ -284,9 +284,38 @@ def settings():
 def get_status():
     """Get current bot status"""
     config = load_config()
+    
+    # Get proxy information
+    proxy_info = {
+        'enabled': config.get('use_proxy', False),
+        'total_proxies': len(config.get('proxy_list', [])),
+        'failed_proxies': 0,
+        'current_proxy': None
+    }
+    
+    # Get mail.tm information
+    mail_info = {
+        'api_status': 'ready',
+        'current_email': None,
+        'last_email_generated': None
+    }
+    
+    # If bot is running, get live stats
+    if bot_instance:
+        if hasattr(bot_instance, 'failed_proxies'):
+            proxy_info['failed_proxies'] = len(bot_instance.failed_proxies)
+        if hasattr(bot_instance, 'current_proxy'):
+            proxy_info['current_proxy'] = bot_instance.current_proxy
+        if hasattr(bot_instance, 'current_email'):
+            mail_info['current_email'] = bot_instance.current_email
+        if hasattr(bot_instance, 'mail_account'):
+            mail_info['last_email_generated'] = bot_instance.mail_account
+    
     return jsonify({
         **bot_state,
-        'codes_count': len(config['invitation_codes'])
+        'codes_count': len(config['invitation_codes']),
+        'proxy_info': proxy_info,
+        'mail_info': mail_info
     })
 
 @app.route('/api/start', methods=['POST'])
