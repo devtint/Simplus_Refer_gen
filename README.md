@@ -113,7 +113,10 @@ INVITATION_CODES=CODE1,CODE2,CODE3,CODE4,CODE5
 KEEP_ALIVE_URL=https://your-app-name.onrender.com
 WEB_USERNAME=admin
 WEB_PASSWORD=your_secure_password
+SECRET_KEY=your-random-secret-key-here
 ```
+
+> 💡 **Tip**: Generate a secure SECRET_KEY with: `python -c "import secrets; print(secrets.token_hex(32))"`
 
 > 🔒 **Security**: Your `.env` file contains sensitive data and is automatically ignored by git
 
