@@ -1,23 +1,28 @@
 """
-Simplus Auto Referral Bot
+Simplus Auto Referral Bot - Version 2.0
 
 This bot automatically generates referrals for your Simplus account using temporary emails.
 Each successful registration counts as a referral to your account, helping you earn rewards.
 
 For Educational Purposes Only
 
-BEFORE RUNNING:
-1. Get your Telegram API credentials from https://my.telegram.org (Still needed for legacy compatibility)
-2. Replace API_ID, API_HASH, and PHONE_NUMBER with your actual values
-3. Change the invitation_code to YOUR referral code (this is how you get referrals)
-4. Install required packages: pip install requests python-dotenv
-5. NEW: Now uses mail.tm API for temporary emails - No Telegram bot required!
+SETUP INSTRUCTIONS:
+1. Create a .env file with your invitation codes:
+   INVITATION_CODES=code1,code2,code3
+
+OPTIONAL (for proxy support):
+2. Add proxy configuration to .env:
+   PROXY_LIST=proxy1:port:user:pass,proxy2:port:user:pass
+
+3. Install required packages: pip install -r requirements.txt
 
 FEATURES:
 - Direct mail.tm API integration (faster and more reliable)
 - Proxy rotation support for better anonymization
 - User-Agent rotation to avoid detection
 - Automatic failed proxy blacklisting
+- Big Cycle system with user approval breaks
+- Real-time monitoring and comprehensive logging
 
 DISCLAIMER: This script is for educational purposes only.
 Use responsibly and in accordance with platform terms of service.
@@ -26,27 +31,31 @@ Use responsibly and in accordance with platform terms of service.
 import asyncio
 import re
 import requests
-from telethon import TelegramClient, events
 import time
 import os
 import random
 import json
 from dotenv import load_dotenv
 
+# Selenium imports for browser automation
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
+from webdriver_manager.chrome import ChromeDriverManager
+
 # Load environment variables from .env file
 load_dotenv()
 
-# Your Telegram API credentials (from .env file)
-API_ID = os.getenv('API_ID')
-API_HASH = os.getenv('API_HASH')
-PHONE_NUMBER = os.getenv('PHONE_NUMBER')
-
-# Validate required credentials
-if not all([API_ID, API_HASH, PHONE_NUMBER]):
-    raise ValueError("Missing required Telegram credentials in .env file")
-
 # Load invitation codes (supports multiple codes separated by comma)
 INVITATION_CODES = [code.strip() for code in os.getenv('INVITATION_CODES', '').split(',') if code.strip()]
+
+# Get proxy list from environment (optional)
+PROXY_LIST = [proxy.strip() for proxy in os.getenv('PROXY_LIST', '').split(',') if proxy.strip()]
 
 # Mail.tm API configuration
 MAILTM_BASE_URL = 'https://api.mail.tm'
@@ -67,7 +76,6 @@ USER_AGENTS = [
 
 class SimplusAutoReferBot:
     def __init__(self, proxy_list=None, use_proxy=False):
-        self.client = None
         self.current_email = None
         self.verification_code = None
         self.email_received = asyncio.Event()
@@ -474,7 +482,15 @@ async def main():
     print("🚀 Starting Simplus Auto Referral Generator Bot...")
     print("📧 Now using mail.tm API - No Telegram setup required!")
     print(f"Made with ❤️ by TYRELL (Only for educational purposes, NO illegal use!)")
-    automator = SimplusAutoReferBot()
+    
+    # Configure proxy usage
+    use_proxy = len(PROXY_LIST) > 0
+    if use_proxy:
+        print(f"🔒 Proxy rotation enabled: {len(PROXY_LIST)} proxies loaded")
+    else:
+        print("🌐 Direct connection (no proxy)")
+    
+    automator = SimplusAutoReferBot(proxy_list=PROXY_LIST, use_proxy=use_proxy)
     await automator.run_continuous()
 
 if __name__ == "__main__":

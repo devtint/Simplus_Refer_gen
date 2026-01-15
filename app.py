@@ -163,9 +163,8 @@ async def run_bot():
         add_log("Proxy disabled", "info")
     
     try:
-        # Setup Telegram
-        await bot_instance.setup_telegram()
-        add_log("Connected to Telegram", "success")
+        # Bot is ready to start with mail.tm API - no setup required
+        add_log("Bot ready to start with mail.tm API", "success")
         
         loop_count = 1
         total_success_count = 0
@@ -235,10 +234,9 @@ async def run_bot():
     except Exception as e:
         add_log(f"Bot error: {str(e)}", "error")
     finally:
-        if bot_instance and bot_instance.client:
-            await bot_instance.client.disconnect()
+        # No client cleanup needed with mail.tm API
         bot_state['running'] = False
-        add_log("Bot disconnected", "info")
+        add_log("Bot stopped", "info")
 
 def run_bot_thread():
     """Run bot in a separate thread"""
