@@ -273,11 +273,6 @@ class SimplusAutoReferBot:
         print("❌ Timeout waiting for verification code")
         return None
 
-    async def setup_telegram(self):
-        """Setup Telegram client - DEPRECATED: Now using mail.tm API"""
-        print("📱 Telegram setup skipped - Using mail.tm API instead")
-        print("✅ Mail.tm API ready for email generation")
-
     def send_verification_code(self, email):
         """Send verification code to email via Simplus API"""
         url = "https://m.simplus.online/crmapi/send_verification_code/"
@@ -414,8 +409,8 @@ class SimplusAutoReferBot:
             print("❌ ERROR: No invitation codes found in .env file!")
             return
         
-        # Setup (no more Telegram needed)
-        await self.setup_telegram()
+        # Ready to start - no setup required with mail.tm API!
+        print("✅ Mail.tm API ready - no additional setup needed")
         
         loop_count = 1
         total_success_count = 0
