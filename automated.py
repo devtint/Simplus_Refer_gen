@@ -26,6 +26,7 @@ import requests
 from telethon import TelegramClient, events
 import time
 import os
+import random
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -48,6 +49,20 @@ INVITATION_CODES = [code.strip() for code in os.getenv('INVITATION_CODES', '').s
 # Search for it, click Start, and generate at least one test email to ensure it's working.
 TEMP_MAIL_BOT = 'TempMail_org_bot'
 
+# List of realistic User-Agent strings to rotate and avoid detection
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/131.0.0.0",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+]
+
 class SimplusAutoReferBot:
     def __init__(self):
         self.client = None
@@ -56,10 +71,10 @@ class SimplusAutoReferBot:
         self.email_received = asyncio.Event()
         self.code_received = asyncio.Event()
         
-        # Setup requests session for Simplus API
+        # Setup requests session for Simplus API with random User-Agent
         self.session = requests.Session()
         self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0",
+            "User-Agent": random.choice(USER_AGENTS),
             "Content-Type": "application/json;charset=UTF-8;",
             "Language": "th",
             "X-Crm-Country": "th",
@@ -180,6 +195,9 @@ class SimplusAutoReferBot:
         print(f"\n{'='*60}")
         print(f"🔄 LOOP {loop_count} | Processing Code {code_index}/{total_codes}: {invitation_code}")
         print(f"{'='*60}")
+        
+        # Rotate User-Agent for each cycle to avoid detection
+        self.session.headers.update({"User-Agent": random.choice(USER_AGENTS)})
         
         # Step 1: Generate new email
         email = await self.generate_new_email()
